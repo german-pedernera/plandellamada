@@ -48,7 +48,7 @@ document.getElementById('registrationForm').addEventListener('submit', async (e)
     const reg = {
         jerarquia: document.getElementById('jerarquia').value,
         nombre: document.getElementById('nombre').value,
-        dni: document.getElementById('dni').value,
+        dni: document.getElementById('mi').value, // CORREGIDO: antes decía 'dni'
         ce: document.getElementById('ce').value,
         fecha: document.getElementById('fechaNacimiento').value,
         estadoCivil: document.getElementById('estadoCivil').value,
@@ -65,11 +65,23 @@ document.getElementById('registrationForm').addEventListener('submit', async (e)
 
     try {
         await window.fstore.addDoc(window.fstore.collection(window.db, "registros"), reg);
-        Swal.fire('Éxito', 'Registro guardado correctamente en la nube.', 'success');
-        e.target.reset();
-        document.getElementById('edadCalculada').innerText = "Edad: -- años";
+        
+        Swal.fire({
+            title: '¡Éxito!',
+            text: 'El personal ha sido registrado en el Plan de Llamada.',
+            icon: 'success',
+            confirmButtonColor: '#003366'
+        });
+
+        e.target.reset(); // Limpia el formulario
+        
+        // Si el modal está abierto, refrescamos la tabla manualmente
+        if (document.getElementById('adminModal').style.display === 'block') {
+            renderTable();
+        }
     } catch (error) {
-        Swal.fire('Error', 'No se pudo conectar con la base de datos.', 'error');
+        console.error("Error al guardar:", error);
+        Swal.fire('Error', 'No se pudo conectar con Firebase.', 'error');
     }
 });
 
@@ -112,26 +124,27 @@ function renderTable(filter = "") {
         i.dni.includes(filter)
     );
 
-    filteredData.forEach(i => {
-        body.innerHTML += `
-            <tr>
-                <td>${i.jerarquia}</td>
-                <td>${i.nombre}</td>
-                <td>${i.dni}</td>
-                <td>${i.ce}</td>
-                <td>${i.fecha}</td>
-                <td>${i.estadoCivil}</td>
-                <td>${i.tel}</td>
-                <td>${i.telAlt1 || '-'}</td>
-                <td>${i.telAlt2 || '-'}</td>
-                <td>${i.email}</td>
-                <td>${i.calle} ${i.numero}</td>
-                <td>${i.localidad}</td>
-                <td>
-                    <button onclick="deleteItem('${i.fireId}')" class="btn-icon">🗑️</button>
-                </td>
-            </tr>`;
-    });
+    // Verifica que en renderTable uses exactamente estos nombres:
+filteredData.forEach(i => {
+    body.innerHTML += `
+        <tr>
+            <td>${i.jerarquia}</td>
+            <td>${i.nombre}</td>
+            <td>${i.dni}</td> 
+            <td>${i.ce}</td>
+            <td>${i.fecha}</td>
+            <td>${i.estadoCivil}</td>
+            <td>${i.tel}</td>
+            <td>${i.telAlt1 || '-'}</td>
+            <td>${i.telAlt2 || '-'}</td>
+            <td>${i.email}</td>
+            <td>${i.calle} ${i.numero}</td>
+            <td>${i.localidad}</td>
+            <td>
+                <button onclick="deleteItem('${i.fireId}')" class="btn-icon">🗑️</button>
+            </td>
+        </tr>`;
+});
 }
 
 // --- BORRAR REGISTRO ---
