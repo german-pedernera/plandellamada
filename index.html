@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema de Registro - Gendarmería</title>
+    <link rel="shortcut icon" href="/favicon.png" type="image/x-icon">
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css"/>
+</head>
+<body>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.23/jspdf.plugin.autotable.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+
+    <header class="main-header">
+        <h1>Plan de llamada "ESVIACATALINA"</h1>
+        <button id="adminLoginBtn" class="btn btn-secondary admin-top-right">Acceso Administrador</button>
+    </header>
+
+    <main class="container">
+        <form id="registrationForm" class="card">
+            <section class="form-section">
+                <h3>Datos Personales</h3>
+                <div class="grid-layout">
+                    <div class="input-group">
+                        <label>Jerarquía</label>
+                        <select id="jerarquia" required>
+                            <option value="">Seleccione...</option>
+                            <optgroup label="Oficiales">
+                                <option value="Comandante General">Comandante General</option>
+                                <option value="Comandante Mayor">Comandante Mayor</option>
+                                <option value="Comandante Principal">Comandante Principal</option>
+                                <option value="Comandante">Comandante</option>
+                                <option value="Segundo Comandante">Segundo Comandante</option>
+                                <option value="Primer Alférez">Primer Alférez</option>
+                                <option value="Alférez">Alférez</option>
+                                <option value="Subalférez">Subalférez</option>
+                            </optgroup>
+                            <optgroup label="Suboficiales">
+                                <option value="Suboficial Mayor">Suboficial Mayor</option>
+                                <option value="Suboficial Principal">Suboficial Principal</option>
+                                <option value="Sargento Ayudante">Sargento Ayudante</option>
+                                <option value="Sargento Primero">Sargento Primero</option>
+                                <option value="Sargento">Sargento</option>
+                                <option value="Cabo Primero">Cabo Primero</option>
+                                <option value="Cabo">Cabo</option>
+                                <option value="Gendarme">Gendarme</option>
+                            </optgroup>
+                        </select>
+                    </div>
+                    <div class="input-group">
+                        <label>Apellido y Nombre</label>
+                        <input type="text" id="nombre" placeholder="ingrese su apellido y nombre" required>
+                    </div>
+                    <div class="input-group">
+                        <label>MI</label>
+                        <input type="number" id="mi" placeholder="Ingrese su DNI" required>
+                    </div>
+                    <div class="input-group">
+                        <label>CE</label>
+                        <input type="text" id="ce" placeholder="Ingrese su Código Estadistico" required>
+                    </div>
+                    <div class="input-group">
+                        <label>Fecha Nacimiento</label>
+                        <input type="date" id="fechaNacimiento" required>
+                        <!-- <span id="edadCalculada" style="font-size: 0.8rem; color: #666;">Edad: -- años</span> -->
+                    </div>
+                    <div class="input-group">
+                        <label>Estado Civil</label>
+                        <select id="estadoCivil">
+                            <option value="Soltero/a">Soltero/a</option>
+                            <option value="Casado/a">Casado/a</option>
+                            <option value="Divorciado/a">Divorciado/a</option>
+                            <option value="Viudo/a">Viudo/a</option>
+                            <option value="Separacion de Echo">Separacion de Echo</option>
+                        </select>
+                    </div>
+                </div>
+            </section>
+
+            <section class="form-section">
+                <h3>Contacto y Domicilio</h3>
+                <div class="grid-layout">
+                    <div class="input-group">
+                        <label>Teléfono Personal</label>
+                        <input type="tel" id="telPers" placeholder="Ej: 123456789" required>
+                    </div>
+                    <div class="input-group">
+                        <label>Tel. Alternativo 1</label>
+                        <input type="tel" id="telAlt1" placeholder="Ej: 987654321">
+                    </div>
+                    <div class="input-group">
+                        <label>Tel. Alternativo 2</label>
+                        <input type="tel" id="telAlt2" placeholder="Ej: 987654321">
+                    </div>
+                    <div class="input-group">
+                        <label>Email Personal</label>
+                        <input type="email" id="email" placeholder="Ingrese su email personal" required>
+                    </div>
+                    <div class="input-group">
+                        <label>Calle</label>
+                        <input type="text" id="calle" placeholder="Ingrese su calle" required>
+                    </div>
+                    <div class="input-group">
+                        <label>Número/Mza/Casa/Dpto</label>
+                        <input type="text" id="numero" placeholder="Nro, Mza, casa o Dpto" required>
+                    </div>
+                    <div class="input-group">
+                        <label>Localidad</label>
+                        <input type="text" id="localidad" placeholder="Ingrese su localidad" required>
+                    </div>
+                    <div class="input-group">
+                        <label>Provincia</label>
+                        <input type="text" id="provincia" placeholder="Ingrese su provincia" required>
+                    </div>
+                </div>
+            </section>
+
+            <button type="submit" class="btn btn-primary">Guardar Registro</button>
+        </form>
+    </main>
+
+    <div id="adminModal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <h2>Planilla de Personal Registrado</h2>
+            
+            <div class="admin-tools">
+                <input type="text" id="searchBar" placeholder="Buscar por Nombre o DNI...">
+                <div class="export-btns">
+                    <button onclick="exportToPDF()" class="btn btn-pdf">Descargar PDF</button>
+                    <button onclick="exportToExcel()" class="btn btn-excel">Descargar Excel</button>
+                </div>
+            </div>
+
+            <div class="table-responsive">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Jerarquía</th>
+                            <th>Nombre</th>
+                            <th>DNI</th>
+                            <th>CE</th>
+                            <th>Nacimiento</th>
+                            <th>E. Civil</th>
+                            <th>Teléfono</th>
+                            <th>Alt 1</th>
+                            <th>Alt 2</th>
+                            <th>Email</th>
+                            <th>Domicilio</th>
+                            <th>Localidad</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tableBody"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { 
+            getFirestore, 
+            collection, 
+            addDoc, 
+            deleteDoc, 
+            doc, 
+            onSnapshot, 
+            query, 
+            orderBy 
+        } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyCyo7dlUbv4MWysqVbXm0V6nCDMyhxPRWA",
+            authDomain: "plan-llamada-esviacatalina.firebaseapp.com",
+            projectId: "plan-llamada-esviacatalina",
+            storageBucket: "plan-llamada-esviacatalina.firebasestorage.app",
+            messagingSenderId: "263626964045",
+            appId: "1:263626964045:web:00af912c49b3c9eb37f004"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+
+        // Exportar a window para uso en script.js
+        window.db = db;
+        window.fstore = { collection, addDoc, deleteDoc, doc, onSnapshot, query, orderBy };
+    </script>
+    
+    <script src="script.js"></script>
+</body>
+</html>
