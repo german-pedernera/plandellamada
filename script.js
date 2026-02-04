@@ -43,7 +43,7 @@ document.getElementById('registrationForm').addEventListener('submit', async (e)
 
     const reg = {
         jerarquia: document.getElementById('jerarquia').value,
-        nombre: document.getElementById('nombre').value,
+        nombre: document.getElementById('nombre').value.toLowerCase(), // Guardamos en minúsculas para estandarizar
         dni: dni,
         ce: ce,
         estadoCivil: document.getElementById('estadoCivil').value,
@@ -51,12 +51,12 @@ document.getElementById('registrationForm').addEventListener('submit', async (e)
         emergencia: document.getElementById('emergenciaContacto').value,
         tel: document.getElementById('telPers').value,
         telAlt1: document.getElementById('telAlt1').value || '-',
-        email: document.getElementById('email').value,
-        calle: document.getElementById('calle').value,
+        email: document.getElementById('email').value.toLowerCase(),
+        calle: document.getElementById('calle').value.toLowerCase(),
         numero: document.getElementById('numero').value,
-        localidad: document.getElementById('localidad').value,
-        provincia: document.getElementById('provincia').value,
-        destino: document.getElementById('destino').value, // NUEVO
+        localidad: document.getElementById('localidad').value.toLowerCase(),
+        provincia: document.getElementById('provincia').value.toLowerCase(),
+        destino: document.getElementById('destino').value, 
         timestamp: Date.now()
     };
 
@@ -138,21 +138,23 @@ function renderTable(filter = "") {
     
     body.innerHTML = filtered.map((i, index) => `
         <tr id="row-${i.fireId}">
-            <td>${index + 1}</td> <td><b>${i.jerarquia}</b></td>
-            <td>${i.nombre}</td>
+            <td>${index + 1}</td> 
+            <td class="cap-text"><b>${i.jerarquia}</b></td>
+            <td class="cap-text">${i.nombre}</td>
             <td>${i.dni}</td>
             <td>${i.ce}</td>
-            <td>${i.estadoCivil}</td>
+            <td class="cap-text">${i.estadoCivil}</td>
             <td>${i.fecha}</td>
             <td>${i.emergencia}</td>
             <td>${i.tel}</td>
             <td>${i.telAlt1}</td>
             <td>${i.email}</td>
-            <td>${i.calle}</td>
-            <td>${i.numero}</td>
-            <td>${i.localidad}</td>
-            <td>${i.provincia}</td>
-            <td>${i.destino || '-'}</td> <td class="actions-cell">
+            <td class="cap-text">${i.calle}</td>
+            <td class="cap-text">${i.numero}</td>
+            <td class="cap-text">${i.localidad}</td>
+            <td class="cap-text">${i.provincia}</td>
+            <td class="cap-text">${i.destino || '-'}</td> 
+            <td class="actions-cell">
                 <button onclick="editInline('${i.fireId}')" title="Editar"><i class="fas fa-edit"></i></button>
                 <button onclick="deleteItem('${i.fireId}')" title="Eliminar"><i class="fas fa-trash"></i></button>
             </td>
@@ -162,7 +164,6 @@ function renderTable(filter = "") {
 window.editInline = function(id) {
     const row = document.getElementById(`row-${id}`);
     const cells = row.getElementsByTagName('td');
-    // Se añadió 'destino' al final de fields
     const fields = ['jerarquia', 'nombre', 'dni', 'ce', 'estadoCivil', 'fecha', 'emergencia', 'tel', 'telAlt1', 'email', 'calle', 'numero', 'localidad', 'provincia', 'destino'];
     
     for (let i = 0; i < fields.length; i++) {
@@ -178,7 +179,10 @@ window.editInline = function(id) {
 window.saveInline = async function(id) {
     const fields = ['jerarquia', 'nombre', 'dni', 'ce', 'estadoCivil', 'fecha', 'emergencia', 'tel', 'telAlt1', 'email', 'calle', 'numero', 'localidad', 'provincia', 'destino'];
     const updated = {};
-    fields.forEach(f => { updated[f] = document.getElementById(`edit-${f}-${id}`).value; });
+    fields.forEach(f => { 
+        let val = document.getElementById(`edit-${f}-${id}`).value;
+        updated[f] = (f === 'dni' || f === 'ce' || f === 'tel' || f === 'fecha') ? val : val.toLowerCase();
+    });
     try {
         await window.fstore.updateDoc(window.fstore.doc(window.db, "registros", id), updated);
         Swal.fire('Guardado', 'Datos actualizados.', 'success');
@@ -191,17 +195,21 @@ window.exportToPDF = function() {
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'legal' });
     doc.text("PLAN DE LLAMADA - ESVIACATALINA", 14, 15);
-    // Agregada columna "Destino"
     const columns = ["Nro", "Jerarquía", "Nombre", "DNI", "CE", "Est. Civil", "F. Nac", "Emergencia", "Tel.", "Alt 1", "Email", "Calle", "Nro", "Loc.", "Prov.", "Destino"];
     
     const sortedData = [...database].sort((a, b) => (jerarquiaPrioridad[a.jerarquia] || 99) - (jerarquiaPrioridad[b.jerarquia] || 99));
-    const rows = sortedData.map((i, idx) => [idx + 1, i.jerarquia, i.nombre, i.dni, i.ce, i.estadoCivil, i.fecha, i.emergencia, i.tel, i.telAlt1, i.email, i.calle, i.numero, i.localidad, i.provincia, i.destino || '-']);
+    const rows = sortedData.map((i, idx) => [
+        idx + 1, 
+        i.jerarquia, 
+        i.nombre, 
+        i.dni, i.ce, i.estadoCivil, i.fecha, i.emergencia, i.tel, i.telAlt1, i.email, i.calle, i.numero, i.localidad, i.provincia, i.destino || '-'
+    ]);
 
     doc.autoTable({
         head: [columns],
         body: rows,
         startY: 25,
-        styles: { fontSize: 6 },
+        styles: { fontSize: 6, halign: 'left' },
         headStyles: { fillColor: [0, 51, 102] }
     });
     doc.save('Planilla_Personal_Registrado.pdf');
@@ -225,7 +233,7 @@ window.exportToExcel = function() {
         Numero: i.numero,
         Localidad: i.localidad,
         Provincia: i.provincia,
-        Destino: i.destino || '-' // NUEVO
+        Destino: i.destino || '-' 
     }));
     const ws = XLSX.utils.json_to_sheet(exportData);
     const wb = XLSX.utils.book_new();
