@@ -227,3 +227,7 @@ window.deleteItem = async (id) => {
 };
 
 document.getElementById('searchBar').oninput = (e) => renderTable(e.target.value);
+
+// Agrega esto al final de tu archivo script.js o dentro de initApp
+const fechaHoy = new Date().toISOString().split("T")[0];
+document.getElementById('fechaNacimiento').setAttribute('max', fechaHoy);
