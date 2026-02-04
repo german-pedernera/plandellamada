@@ -1,60 +1,48 @@
-// --- CONFIGURACIÓN DE ADMINS ---
 const ADMINS = [
-    { nombre: "German Pedernera", dni: "32559315", ce: "70965" },
-    { nombre: "Claudia Faiad", dni: "30819237", ce: "88908" },
-    { nombre: "Marcelo Skieback", dni: "27433769", ce: "63864" },
-    { nombre: "Silvia Tejada", dni: "33336220", ce: "76254" },
-    { nombre: "Molina Gil", dni: "27138557", ce: "67628" },
-    { nombre: "Cristian Orfali", dni: "33142786", ce: "74118" },
-
+    { nombre: "German Andres Ramirez Pedernera", dni: "32559315", contraseña: "Emiliano25" },
+    { nombre: "Claudia Yamil Faiad", dni: "30819237", contraseña: "Lala2727" },
+    { nombre: "Jose Marcelo Skieback", dni: "27433769", contraseña: "Nira2026" },
+    { nombre: "Silvia Noelia Rivas", dni: "29339676", contraseña: "Aaron13E" },
+    { nombre: "Silvia Fatima Tejerina Olivera", dni: "33336220", contraseña: "Trufita.00" },
+    { nombre: "Gil Molina", dni: "27138557", contraseña: "Fiamma11" },
+    { nombre: "Cistian Moise Maman Orfali", dni: "33142786", contraseña: "Orfali2026" },
 ];
 
 let database = [];
 
-// --- INICIALIZACIÓN Y CARGA DESDE FIREBASE ---
 function initApp() {
-    const q = window.fstore.query(
-        window.fstore.collection(window.db, "registros"), 
-        window.fstore.orderBy("timestamp", "desc")
-    );
-
+    const q = window.fstore.query(window.fstore.collection(window.db, "registros"), window.fstore.orderBy("timestamp", "desc"));
     window.fstore.onSnapshot(q, (snapshot) => {
-        database = snapshot.docs.map(doc => ({
-            fireId: doc.id,
-            ...doc.data()
-        }));
-        if (document.getElementById('adminModal').style.display === 'block') {
-            renderTable();
-        }
+        database = snapshot.docs.map(doc => ({ fireId: doc.id, ...doc.data() }));
+        renderTable();
     });
 }
-
-// Esperar un momento a que Firebase se inicialice en el objeto window
 setTimeout(initApp, 1000);
 
-// // --- CÁLCULO DE EDAD ---
-// document.getElementById('fechaNacimiento').addEventListener('change', function() {
-//     const nacimiento = new Date(this.value);
-//     const hoy = new Date();
-//     let edad = hoy.getFullYear() - nacimiento.getFullYear();
-//     if (hoy.getMonth() < nacimiento.getMonth() || (hoy.getMonth() === nacimiento.getMonth() && hoy.getDate() < nacimiento.getDate())) edad--;
-//     document.getElementById('edadCalculada').innerText = `Edad: ${edad} años`;
-// });
+// --- NAVEGACIÓN ---
+document.getElementById('hamburgerBtn').onclick = () => document.getElementById('dropdownMenu').classList.toggle('show');
+window.closeModal = (id) => document.getElementById(id).style.display = 'none';
 
-// --- GUARDAR REGISTRO ---
+// --- REGISTRO ---
 document.getElementById('registrationForm').addEventListener('submit', async (e) => {
     e.preventDefault();
-    
+    const dni = document.getElementById('mi').value;
+    const ce = document.getElementById('ce').value;
+
+    if (database.some(r => r.dni === dni || r.ce === ce)) {
+        return Swal.fire('Atención', 'Personal ya registrado.', 'warning');
+    }
+
     const reg = {
         jerarquia: document.getElementById('jerarquia').value,
         nombre: document.getElementById('nombre').value,
-        dni: document.getElementById('mi').value, // CORREGIDO: antes decía 'dni'
-        ce: document.getElementById('ce').value,
-        fecha: document.getElementById('fechaNacimiento').value,
+        dni: dni,
+        ce: ce,
         estadoCivil: document.getElementById('estadoCivil').value,
+        fecha: document.getElementById('fechaNacimiento').value,
+        emergencia: document.getElementById('emergenciaContacto').value,
         tel: document.getElementById('telPers').value,
-        telAlt1: document.getElementById('telAlt1').value,
-        telAlt2: document.getElementById('telAlt2').value,
+        telAlt1: document.getElementById('telAlt1').value || '-',
         email: document.getElementById('email').value,
         calle: document.getElementById('calle').value,
         numero: document.getElementById('numero').value,
@@ -65,136 +53,177 @@ document.getElementById('registrationForm').addEventListener('submit', async (e)
 
     try {
         await window.fstore.addDoc(window.fstore.collection(window.db, "registros"), reg);
-        
-        Swal.fire({
-            title: '¡Éxito!',
-            text: 'El personal ha sido registrado en el Plan de Llamada.',
-            icon: 'success',
-            confirmButtonColor: '#003366'
-        });
-
-        e.target.reset(); // Limpia el formulario
-        
-        // Si el modal está abierto, refrescamos la tabla manualmente
-        if (document.getElementById('adminModal').style.display === 'block') {
-            renderTable();
-        }
+        Swal.fire('Éxito', 'Registrado correctamente.', 'success');
+        e.target.reset();
     } catch (error) {
-        console.error("Error al guardar:", error);
-        Swal.fire('Error', 'No se pudo conectar con Firebase.', 'error');
+        Swal.fire('Error', 'Fallo de conexión.', 'error');
     }
 });
 
-// --- ACCESO ADMINISTRADOR ---
-document.getElementById('adminLoginBtn').addEventListener('click', async () => {
+// --- ADMIN LOGIN ---
+document.getElementById('adminLoginBtn').onclick = async () => {
+    document.getElementById('dropdownMenu').classList.remove('show');
+    const { value: v } = await Swal.fire({
+        title: 'Acceso Admin',
+        // Cambiamos el placeholder de 'CE' a 'Contraseña'
+        html: '<input id="a-dni" class="swal2-input" placeholder="DNI"><input id="a-ce" type="password" class="swal2-input" placeholder="Contraseña">',
+        preConfirm: () => [document.getElementById('a-dni').value, document.getElementById('a-ce').value]
+    });
+    // El resto de la validación se mantiene igual
+    if (v && ADMINS.find(a => a.dni === v[0] && a.contraseña === v[1])) {
+        document.getElementById('adminModal').style.display = 'block';
+    } else if(v) {
+        Swal.fire('Error', 'Credenciales incorrectas.', 'error');
+    }
+};
+
+// --- FUNCIÓN RESETEAR MIS DATOS (SOLICITADO) ---
+window.resetUserData = async () => {
+    document.getElementById('dropdownMenu').classList.remove('show');
     const { value: formValues } = await Swal.fire({
-        title: 'Acceso Administrador',
+        title: 'Borrar mis datos',
+        text: 'Ingrese sus credenciales para eliminar su registro.',
         html:
-            '<input id="swal-dni" class="swal2-input" placeholder="DNI / MI">' +
-            '<input id="swal-ce" type="password" class="swal2-input" placeholder="Código Estadistico">',
-        focusConfirm: false,
-        confirmButtonText: 'Ingresar',
-        confirmButtonColor: '#003366',
-        preConfirm: () => {
-            return [
-                document.getElementById('swal-dni').value,
-                document.getElementById('swal-ce').value
-            ]
-        }
+            '<input id="reset-dni" class="swal2-input" placeholder="DNI (MI)">' +
+            '<input id="reset-ce" type="password" class="swal2-input" placeholder="CE">',
+        showCancelButton: true,
+        confirmButtonText: 'Borrar mis datos',
+        confirmButtonColor: '#dc3545',
+        preConfirm: () => [
+            document.getElementById('reset-dni').value,
+            document.getElementById('reset-ce').value
+        ]
     });
 
     if (formValues) {
-        const auth = ADMINS.find(a => a.dni === formValues[0] && a.ce === formValues[1]);
-        if (auth) {
-            document.getElementById('adminModal').style.display = 'block';
-            renderTable();
+        const [inputDni, inputCe] = formValues;
+        const registroEncontrado = database.find(r => r.dni === inputDni && r.ce === inputCe);
+
+        if (registroEncontrado) {
+            const confirm = await Swal.fire({
+                title: '¿Confirmar eliminación?',
+                text: `Se borrará el registro de ${registroEncontrado.nombre}.`,
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#dc3545',
+                confirmButtonText: 'Sí, borrar fila'
+            });
+            if (confirm.isConfirmed) {
+                try {
+                    await window.fstore.deleteDoc(window.fstore.doc(window.db, "registros", registroEncontrado.fireId));
+                    Swal.fire('Eliminado', 'Su fila ha sido borrada.', 'success');
+                } catch (e) {
+                    Swal.fire('Error', 'No se pudo realizar la acción.', 'error');
+                }
+            }
         } else {
-            Swal.fire('Error', 'Credenciales incorrectas', 'error');
+            Swal.fire('Error', 'DNI o CE incorrectos.', 'error');
         }
     }
-});
+};
 
-// --- RENDERIZAR TABLA ---
+// --- TABLA Y EDICIÓN ---
 function renderTable(filter = "") {
     const body = document.getElementById('tableBody');
-    body.innerHTML = "";
-    
-    const filteredData = database.filter(i => 
-        i.nombre.toLowerCase().includes(filter.toLowerCase()) || 
-        i.dni.includes(filter)
+    const filtered = database.filter(i => 
+        i.nombre.toLowerCase().includes(filter.toLowerCase()) || i.dni.includes(filter)
     );
-
-    // Verifica que en renderTable uses exactamente estos nombres:
-filteredData.forEach(i => {
-    body.innerHTML += `
-        <tr>
-            <td>${i.jerarquia}</td>
+    
+    body.innerHTML = filtered.map(i => `
+        <tr id="row-${i.fireId}">
+            <td><b>${i.jerarquia}</b></td>
             <td>${i.nombre}</td>
-            <td>${i.dni}</td> 
+            <td>${i.dni}</td>
             <td>${i.ce}</td>
-            <td>${i.fecha}</td>
             <td>${i.estadoCivil}</td>
+            <td>${i.fecha}</td>
+            <td>${i.emergencia}</td>
             <td>${i.tel}</td>
-            <td>${i.telAlt1 || '-'}</td>
-            <td>${i.telAlt2 || '-'}</td>
+            <td>${i.telAlt1}</td>
             <td>${i.email}</td>
-            <td>${i.calle} ${i.numero}</td>
+            <td>${i.calle}</td>
+            <td>${i.numero}</td>
             <td>${i.localidad}</td>
-            <td>
-                <button onclick="deleteItem('${i.fireId}')" class="btn-icon">🗑️</button>
+            <td>${i.provincia}</td>
+            <td class="actions-cell">
+                <button onclick="editInline('${i.fireId}')" title="Editar"><i class="fas fa-edit"></i></button>
+                <button onclick="deleteItem('${i.fireId}')" title="Eliminar"><i class="fas fa-trash"></i></button>
             </td>
-        </tr>`;
-});
+        </tr>`).join('');
 }
 
-// --- BORRAR REGISTRO ---
-window.deleteItem = async (fireId) => {
-    const result = await Swal.fire({
-        title: '¿Confirmar eliminación?',
-        icon: 'warning',
-        showCancelButton: true,
-        confirmButtonText: 'Eliminar',
-        cancelButtonText: 'Cancelar'
-    });
+window.editInline = function(id) {
+    const row = document.getElementById(`row-${id}`);
+    const cells = row.getElementsByTagName('td');
+    const fields = ['jerarquia', 'nombre', 'dni', 'ce', 'estadoCivil', 'fecha', 'emergencia', 'tel', 'telAlt1', 'email', 'calle', 'numero', 'localidad', 'provincia'];
+    
+    for (let i = 0; i < fields.length; i++) {
+        const val = cells[i].innerText === '-' ? '' : cells[i].innerText;
+        cells[i].innerHTML = `<input type="text" id="edit-${fields[i]}-${id}" value="${val}">`;
+    }
+    cells[14].innerHTML = `
+        <button onclick="saveInline('${id}')" class="btn-save-row"><i class="fas fa-check"></i></button>
+        <button onclick="renderTable()" class="btn-cancel-row"><i class="fas fa-times"></i></button>
+    `;
+};
 
-    if (result.isConfirmed) {
-        try {
-            await window.fstore.deleteDoc(window.fstore.doc(window.db, "registros", fireId));
-            Swal.fire('Eliminado', 'El registro ha sido removido.', 'success');
-        } catch (e) {
-            Swal.fire('Error', 'No se pudo eliminar.', 'error');
-        }
+window.saveInline = async function(id) {
+    const fields = ['jerarquia', 'nombre', 'dni', 'ce', 'estadoCivil', 'fecha', 'emergencia', 'tel', 'telAlt1', 'email', 'calle', 'numero', 'localidad', 'provincia'];
+    const updated = {};
+    fields.forEach(f => { updated[f] = document.getElementById(`edit-${f}-${id}`).value; });
+    try {
+        await window.fstore.updateDoc(window.fstore.doc(window.db, "registros", id), updated);
+        Swal.fire('Guardado', 'Datos actualizados.', 'success');
+    } catch (e) {
+        Swal.fire('Error', 'Fallo al actualizar.', 'error');
     }
 };
 
-// Buscador y cerrar modal
-document.getElementById('searchBar').addEventListener('input', (e) => renderTable(e.target.value));
-document.querySelector('.close').onclick = () => document.getElementById('adminModal').style.display = 'none';
-
-// --- EXPORTAR A PDF ---
+// --- EXPORTACIÓN ---
 window.exportToPDF = function() {
     const { jsPDF } = window.jspdf;
-    const doc = new jsPDF({ orientation: 'landscape' });
+    const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'legal' });
     doc.text("PLAN DE LLAMADA - ESVIACATALINA", 14, 15);
-    
-    const rows = database.map(i => [
-        i.jerarquia, i.nombre, i.dni, i.ce, i.fecha, i.estadoCivil, i.tel, i.telAlt1, i.email, i.calle + ' ' + i.numero, i.localidad
-    ]);
+    const columns = ["Jerarquía", "Nombre", "DNI", "CE", "Est. Civil", "F. Nac", "Emergencia", "Tel.", "Alt 1", "Email", "Calle", "Nro", "Loc.", "Prov."];
+    const rows = database.map(i => [i.jerarquia, i.nombre, i.dni, i.ce, i.estadoCivil, i.fecha, i.emergencia, i.tel, i.telAlt1, i.email, i.calle, i.numero, i.localidad, i.provincia]);
 
     doc.autoTable({
-        startY: 25,
-        head: [["Jerarquía", "Nombre", "DNI", "CE", "Nac.", "E. Civil", "Tel.", "Alt.", "Email", "Domicilio", "Localidad"]],
+        head: [columns],
         body: rows,
-        theme: 'striped',
-        styles: { fontSize: 7 }
+        startY: 25,
+        styles: { fontSize: 6 },
+        headStyles: { fillColor: [0, 51, 102] }
     });
-    doc.save('plan_de_llamada.pdf');
+    doc.save('Planilla_Personal_Registrado.pdf');
 };
 
-// --- EXPORTAR A EXCEL ---
 window.exportToExcel = function() {
-    const ws = XLSX.utils.json_to_sheet(database);
+    const exportData = database.map(({ fireId, timestamp, ...rest }) => ({
+        Jerarquia: rest.jerarquia,
+        Nombre: rest.nombre,
+        DNI: rest.dni,
+        CE: rest.ce,
+        EstadoCivil: rest.estadoCivil,
+        FechaNac: rest.fecha,
+        Emergencia: rest.emergencia,
+        Telefono: rest.tel,
+        TelAlternativo: rest.telAlt1,
+        Email: rest.email,
+        Calle: rest.calle,
+        Numero: rest.numero,
+        Localidad: rest.localidad,
+        Provincia: rest.provincia
+    }));
+    const ws = XLSX.utils.json_to_sheet(exportData);
     const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Registros");
-    XLSX.writeFile(wb, "plan_de_llamada.xlsx");
+    XLSX.utils.book_append_sheet(wb, ws, "Personal");
+    XLSX.writeFile(wb, "Planilla_Personal.xlsx");
 };
+
+window.deleteItem = async (id) => {
+    if ((await Swal.fire({ title: '¿Eliminar registro?', text: "Esta acción no se puede deshacer", icon: 'warning', showCancelButton: true, confirmButtonColor: '#dc3545' })).isConfirmed) {
+        await window.fstore.deleteDoc(window.fstore.doc(window.db, "registros", id));
+    }
+};
+
+document.getElementById('searchBar').oninput = (e) => renderTable(e.target.value);
