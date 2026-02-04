@@ -6,7 +6,17 @@ const ADMINS = [
     { nombre: "Silvia Fatima Tejerina Olivera", dni: "33336220", contraseña: "Trufita.00" },
     { nombre: "Gil Molina", dni: "27138557", contraseña: "Fiamma11" },
     { nombre: "Cistian Moise Maman Orfali", dni: "33142786", contraseña: "Orfali2026" },
+    { nombre: "Ana del Valle Aciar", dni: "31774928", contraseña: "Valentina2026" },
 ];
+
+// Prioridad de jerarquías para el ordenamiento institucional
+const jerarquiaPrioridad = {
+    "Comandante General": 1, "Comandante Mayor": 2, "Comandante Principal": 3,
+    "Comandante": 4, "Segundo Comandante": 5, "Primer Alférez": 6,
+    "Alférez": 7, "Subalférez": 8, "Suboficial Mayor": 9,
+    "Suboficial Principal": 10, "Sargento Ayudante": 11, "Sargento Primero": 12,
+    "Sargento": 13, "Cabo Primero": 14, "Cabo": 15, "Gendarme": 16
+};
 
 let database = [];
 
@@ -65,11 +75,9 @@ document.getElementById('adminLoginBtn').onclick = async () => {
     document.getElementById('dropdownMenu').classList.remove('show');
     const { value: v } = await Swal.fire({
         title: 'Acceso Admin',
-        // Cambiamos el placeholder de 'CE' a 'Contraseña'
         html: '<input id="a-dni" class="swal2-input" placeholder="DNI"><input id="a-ce" type="password" class="swal2-input" placeholder="Contraseña">',
         preConfirm: () => [document.getElementById('a-dni').value, document.getElementById('a-ce').value]
     });
-    // El resto de la validación se mantiene igual
     if (v && ADMINS.find(a => a.dni === v[0] && a.contraseña === v[1])) {
         document.getElementById('adminModal').style.display = 'block';
     } else if(v) {
@@ -77,22 +85,17 @@ document.getElementById('adminLoginBtn').onclick = async () => {
     }
 };
 
-// --- FUNCIÓN RESETEAR MIS DATOS (SOLICITADO) ---
+// --- RESETEAR MIS DATOS ---
 window.resetUserData = async () => {
     document.getElementById('dropdownMenu').classList.remove('show');
     const { value: formValues } = await Swal.fire({
         title: 'Borrar mis datos',
         text: 'Ingrese sus credenciales para eliminar su registro.',
-        html:
-            '<input id="reset-dni" class="swal2-input" placeholder="DNI (MI)">' +
-            '<input id="reset-ce" type="password" class="swal2-input" placeholder="CE">',
+        html: '<input id="reset-dni" class="swal2-input" placeholder="DNI (MI)"><input id="reset-ce" type="password" class="swal2-input" placeholder="CE">',
         showCancelButton: true,
         confirmButtonText: 'Borrar mis datos',
         confirmButtonColor: '#dc3545',
-        preConfirm: () => [
-            document.getElementById('reset-dni').value,
-            document.getElementById('reset-ce').value
-        ]
+        preConfirm: () => [document.getElementById('reset-dni').value, document.getElementById('reset-ce').value]
     });
 
     if (formValues) {
@@ -122,16 +125,26 @@ window.resetUserData = async () => {
     }
 };
 
-// --- TABLA Y EDICIÓN ---
+// --- TABLA Y EDICIÓN ACTUALIZADA ---
 function renderTable(filter = "") {
     const body = document.getElementById('tableBody');
-    const filtered = database.filter(i => 
-        i.nombre.toLowerCase().includes(filter.toLowerCase()) || i.dni.includes(filter)
-    );
+    const adminTitle = document.getElementById('adminTitle');
     
-    body.innerHTML = filtered.map(i => `
+    // Filtrar y ordenar por jerarquía antes de renderizar
+    const filtered = database
+        .filter(i => i.nombre.toLowerCase().includes(filter.toLowerCase()) || i.dni.includes(filter))
+        .sort((a, b) => {
+            const pesoA = jerarquiaPrioridad[a.jerarquia] || 99;
+            const pesoB = jerarquiaPrioridad[b.jerarquia] || 99;
+            return pesoA - pesoB;
+        });
+
+    // Mostrar número de efectivos en el título
+    adminTitle.innerHTML = `<i class="fas fa-list-ul"></i> Planilla de Personal (${filtered.length} Efectivos)`;
+    
+    body.innerHTML = filtered.map((i, index) => `
         <tr id="row-${i.fireId}">
-            <td><b>${i.jerarquia}</b></td>
+            <td>${index + 1}</td> <td><b>${i.jerarquia}</b></td>
             <td>${i.nombre}</td>
             <td>${i.dni}</td>
             <td>${i.ce}</td>
@@ -157,11 +170,12 @@ window.editInline = function(id) {
     const cells = row.getElementsByTagName('td');
     const fields = ['jerarquia', 'nombre', 'dni', 'ce', 'estadoCivil', 'fecha', 'emergencia', 'tel', 'telAlt1', 'email', 'calle', 'numero', 'localidad', 'provincia'];
     
+    // Saltamos la celda 0 (Nro Ord) para empezar la edición desde Jerarquía
     for (let i = 0; i < fields.length; i++) {
-        const val = cells[i].innerText === '-' ? '' : cells[i].innerText;
-        cells[i].innerHTML = `<input type="text" id="edit-${fields[i]}-${id}" value="${val}">`;
+        const val = cells[i+1].innerText === '-' ? '' : cells[i+1].innerText;
+        cells[i+1].innerHTML = `<input type="text" id="edit-${fields[i]}-${id}" value="${val}">`;
     }
-    cells[14].innerHTML = `
+    cells[15].innerHTML = `
         <button onclick="saveInline('${id}')" class="btn-save-row"><i class="fas fa-check"></i></button>
         <button onclick="renderTable()" class="btn-cancel-row"><i class="fas fa-times"></i></button>
     `;
@@ -184,8 +198,11 @@ window.exportToPDF = function() {
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'legal' });
     doc.text("PLAN DE LLAMADA - ESVIACATALINA", 14, 15);
-    const columns = ["Jerarquía", "Nombre", "DNI", "CE", "Est. Civil", "F. Nac", "Emergencia", "Tel.", "Alt 1", "Email", "Calle", "Nro", "Loc.", "Prov."];
-    const rows = database.map(i => [i.jerarquia, i.nombre, i.dni, i.ce, i.estadoCivil, i.fecha, i.emergencia, i.tel, i.telAlt1, i.email, i.calle, i.numero, i.localidad, i.provincia]);
+    const columns = ["Nro", "Jerarquía", "Nombre", "DNI", "CE", "Est. Civil", "F. Nac", "Emergencia", "Tel.", "Alt 1", "Email", "Calle", "Nro", "Loc.", "Prov."];
+    
+    // Exportar con el mismo orden jerárquico que la tabla
+    const sortedData = [...database].sort((a, b) => (jerarquiaPrioridad[a.jerarquia] || 99) - (jerarquiaPrioridad[b.jerarquia] || 99));
+    const rows = sortedData.map((i, idx) => [idx + 1, i.jerarquia, i.nombre, i.dni, i.ce, i.estadoCivil, i.fecha, i.emergencia, i.tel, i.telAlt1, i.email, i.calle, i.numero, i.localidad, i.provincia]);
 
     doc.autoTable({
         head: [columns],
@@ -198,21 +215,23 @@ window.exportToPDF = function() {
 };
 
 window.exportToExcel = function() {
-    const exportData = database.map(({ fireId, timestamp, ...rest }) => ({
-        Jerarquia: rest.jerarquia,
-        Nombre: rest.nombre,
-        DNI: rest.dni,
-        CE: rest.ce,
-        EstadoCivil: rest.estadoCivil,
-        FechaNac: rest.fecha,
-        Emergencia: rest.emergencia,
-        Telefono: rest.tel,
-        TelAlternativo: rest.telAlt1,
-        Email: rest.email,
-        Calle: rest.calle,
-        Numero: rest.numero,
-        Localidad: rest.localidad,
-        Provincia: rest.provincia
+    const sortedData = [...database].sort((a, b) => (jerarquiaPrioridad[a.jerarquia] || 99) - (jerarquiaPrioridad[b.jerarquia] || 99));
+    const exportData = sortedData.map((i, idx) => ({
+        Nro: idx + 1,
+        Jerarquia: i.jerarquia,
+        Nombre: i.nombre,
+        DNI: i.dni,
+        CE: i.ce,
+        EstadoCivil: i.estadoCivil,
+        FechaNac: i.fecha,
+        Emergencia: i.emergencia,
+        Telefono: i.tel,
+        TelAlternativo: i.telAlt1,
+        Email: i.email,
+        Calle: i.calle,
+        Numero: i.numero,
+        Localidad: i.localidad,
+        Provincia: i.provincia
     }));
     const ws = XLSX.utils.json_to_sheet(exportData);
     const wb = XLSX.utils.book_new();
@@ -227,7 +246,5 @@ window.deleteItem = async (id) => {
 };
 
 document.getElementById('searchBar').oninput = (e) => renderTable(e.target.value);
-
-// Agrega esto al final de tu archivo script.js o dentro de initApp
 const fechaHoy = new Date().toISOString().split("T")[0];
 document.getElementById('fechaNacimiento').setAttribute('max', fechaHoy);

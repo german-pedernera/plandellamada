@@ -126,10 +126,10 @@
                         </div>
                     </div>
                     <div class="input-group">
-                        <label>Emergencia: Llamar a</label>
+                        <label>Número de Emergencia</label>
                         <div class="input-with-icon">
                             <i class="fas fa-phone-alt"></i>
-                            <input type="text" id="emergenciaContacto" placeholder="Nombre contacto" required>
+                            <input type="text" id="emergenciaContacto" placeholder="Número de Emergencia" required>
                         </div>
                     </div>
                     <div class="input-group">
@@ -176,7 +176,7 @@
     <div id="adminModal" class="modal">
         <div class="modal-content">
             <span class="close" onclick="closeModal('adminModal')">&times;</span>
-            <h2><i class="fas fa-list-ul"></i> Planilla de Personal Registrado</h2>
+            <h2 id="adminTitle"><i class="fas fa-list-ul"></i> Planilla de Personal Registrado</h2>
             <div class="admin-tools">
                 <input type="text" id="searchBar" placeholder="🔍 Buscar por Nombre o DNI...">
                 <div class="export-btns">
@@ -188,6 +188,7 @@
                 <table>
                 <thead>
                     <tr>
+                        <th>Nro Ord</th>
                         <th>Jerarquía</th>
                         <th>Nombre</th>
                         <th>DNI</th>
