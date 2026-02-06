@@ -137,7 +137,7 @@ window.shareByWhatsApp = function(id) {
     if (!i) return;
 
     const mensaje = `*PLAN DE LLAMADA - ESVIACATALINA*%0A` +
-        `--------------------------------------------------------------%0A` +
+        `----------------------------------------------------%0A` +
         `*Jerarquía:* ${i.jerarquia}%0A` +
         `*Nombre:* ${i.nombre.toUpperCase()}%0A` +
         `*DNI:* ${i.dni}%0A` +
