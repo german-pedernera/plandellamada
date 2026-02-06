@@ -10,6 +10,17 @@ const ADMINS = [
     { nombre: "Maria Florencia Ordoñe", dni: "35564716", contraseña: "Florencia26" },
 ];
 
+const OPCIONES = {
+    jerarquia: [
+        "Comandante General", "Comandante Mayor", "Comandante Principal", "Comandante",
+        "Segundo Comandante", "Primer Alférez", "Alférez", "Subalférez",
+        "Suboficial Mayor", "Suboficial Principal", "Sargento Ayudante", "Sargento Primero",
+        "Sargento", "Cabo Primero", "Cabo", "Gendarme"
+    ],
+    estadoCivil: ["Soltero/a", "Casado/a", "Divorciado/a", "Viudo/a", "Separacion de Hecho"],
+    destino: ["Esviacatalina", "Seviapun", "Nucleo", "-"]
+};
+
 const jerarquiaPrioridad = {
     "Comandante General": 1, "Comandante Mayor": 2, "Comandante Principal": 3,
     "Comandante": 4, "Segundo Comandante": 5, "Primer Alférez": 6,
@@ -19,27 +30,40 @@ const jerarquiaPrioridad = {
 };
 
 let database = [];
+let filteredDatabase = [];
 
 function initApp() {
     const q = window.fstore.query(window.fstore.collection(window.db, "registros"), window.fstore.orderBy("timestamp", "desc"));
     window.fstore.onSnapshot(q, (snapshot) => {
         database = snapshot.docs.map(doc => ({ fireId: doc.id, ...doc.data() }));
-        renderTable();
+        renderTable(document.getElementById('searchBar').value);
     });
 }
 setTimeout(initApp, 1000);
 
 document.getElementById('hamburgerBtn').onclick = () => document.getElementById('dropdownMenu').classList.toggle('show');
-window.closeModal = (id) => document.getElementById(id).style.display = 'none';
+
+window.closeModal = (id) => {
+    if (id === 'adminModal') {
+        Swal.fire({
+            title: 'Saliendo del Sistema',
+            text: 'Cerrando planilla...',
+            imageUrl: 'logoEscuadron.jpeg',
+            imageWidth: 100,
+            imageHeight: 100,
+            timer: 1500,
+            timerProgressBar: true,
+            showConfirmButton: false,
+            willClose: () => document.getElementById(id).style.display = 'none'
+        });
+    } else {
+        document.getElementById(id).style.display = 'none';
+    }
+};
 
 window.scrollTable = (dir) => {
     const wrapper = document.getElementById('tableWrapper');
-    const scrollAmount = 350; 
-    if (dir === 'left') {
-        wrapper.scrollBy({ left: -scrollAmount, behavior: 'smooth' });
-    } else {
-        wrapper.scrollBy({ left: scrollAmount, behavior: 'smooth' });
-    }
+    dir === 'left' ? wrapper.scrollBy({ left: -350, behavior: 'smooth' }) : wrapper.scrollBy({ left: 350, behavior: 'smooth' });
 };
 
 document.getElementById('registrationForm').addEventListener('submit', async (e) => {
@@ -54,8 +78,7 @@ document.getElementById('registrationForm').addEventListener('submit', async (e)
     const reg = {
         jerarquia: document.getElementById('jerarquia').value,
         nombre: document.getElementById('nombre').value.toLowerCase(),
-        dni: dni,
-        ce: ce,
+        dni: dni, ce: ce,
         estadoCivil: document.getElementById('estadoCivil').value,
         fecha: document.getElementById('fechaNacimiento').value,
         emergencia: document.getElementById('emergenciaContacto').value,
@@ -93,110 +116,35 @@ document.getElementById('adminLoginBtn').onclick = async () => {
     }
 };
 
-window.resetUserData = async () => {
-    document.getElementById('dropdownMenu').classList.remove('show');
-    const { value: formValues } = await Swal.fire({
-        title: 'Borrar mis datos',
-        text: 'Ingrese sus credenciales para eliminar su registro.',
-        html: '<input id="reset-dni" class="swal2-input" placeholder="DNI (MI)"><input id="reset-ce" type="password" class="swal2-input" placeholder="CE">',
-        showCancelButton: true,
-        confirmButtonText: 'Borrar mis datos',
-        confirmButtonColor: '#dc3545',
-        preConfirm: () => [document.getElementById('reset-dni').value, document.getElementById('reset-ce').value]
-    });
-
-    if (formValues) {
-        const [inputDni, inputCe] = formValues;
-        const registroEncontrado = database.find(r => r.dni === inputDni && r.ce === inputCe);
-
-        if (registroEncontrado) {
-            const confirm = await Swal.fire({
-                title: '¿Confirmar eliminación?',
-                text: `Se borrará el registro de ${registroEncontrado.nombre}.`,
-                icon: 'warning',
-                showCancelButton: true,
-                confirmButtonColor: '#dc3545',
-                confirmButtonText: 'Sí, borrar fila'
-            });
-            if (confirm.isConfirmed) {
-                try {
-                    await window.fstore.deleteDoc(window.fstore.doc(window.db, "registros", registroEncontrado.fireId));
-                    Swal.fire('Eliminado', 'Su fila ha sido borrada.', 'success');
-                } catch (e) {
-                    Swal.fire('Error', 'No se pudo realizar la acción.', 'error');
-                }
-            }
-        } else {
-            Swal.fire('Error', 'DNI o CE incorrectos.', 'error');
-        }
-    }
-};
-
-window.shareByWhatsApp = function(id) {
-    const i = database.find(item => item.fireId === id);
-    if (!i) return;
-
-    const mensaje = `*PLAN DE LLAMADA - ESVIACATALINA*%0A` +
-        `----------------------------------------------------%0A` +
-        `*Jerarquía:* ${i.jerarquia}%0A` +
-        `*Nombre:* ${i.nombre.toUpperCase()}%0A` +
-        `*DNI:* ${i.dni}%0A` +
-        `*CE:* ${i.ce}%0A` +
-        `*Est. Civil:* ${i.estadoCivil}%0A` +
-        `*F. Nacimiento:* ${i.fecha}%0A` +
-        `*Emergencia:* ${i.emergencia}%0A` +
-        `*Tel. Personal:* ${i.tel}%0A` +
-        `*Tel. Alt 1:* ${i.telAlt1}%0A` +
-        `*Email:* ${i.email}%0A` +
-        `*Domicilio:* ${i.calle} ${i.numero}%0A` +
-        `*Localidad:* ${i.localidad}, ${i.provincia}%0A` +
-        `*Destino:* ${i.destino || '-'}`;
-
-    window.open(`https://wa.me/?text=${mensaje}`, '_blank');
-};
-
 function renderTable(filter = "") {
     const body = document.getElementById('tableBody');
-    const adminTitle = document.getElementById('adminTitle');
+    const f = filter.toLowerCase();
     
-    let dataToShow = database.filter(i => 
-        i.nombre.toLowerCase().includes(filter.toLowerCase()) || 
-        i.dni.includes(filter)
+    filteredDatabase = database.filter(i => 
+        i.nombre.toLowerCase().includes(f) || i.dni.includes(f) ||
+        i.ce.toLowerCase().includes(f) || i.estadoCivil.toLowerCase().includes(f) ||
+        i.jerarquia.toLowerCase().includes(f)
     );
 
-    dataToShow.sort((a, b) => {
-        const pesoA = jerarquiaPrioridad[a.jerarquia] || 99;
-        const pesoB = jerarquiaPrioridad[b.jerarquia] || 99;
-        if (pesoA === pesoB) {
-            return a.nombre.localeCompare(b.nombre);
-        }
-        return pesoA - pesoB;
-    });
+    filteredDatabase.sort((a, b) => (jerarquiaPrioridad[a.jerarquia] || 99) - (jerarquiaPrioridad[b.jerarquia] || 99) || a.nombre.localeCompare(b.nombre));
 
-    adminTitle.innerHTML = `<i class="fas fa-list-ul"></i> Planilla de Personal (${dataToShow.length} Efectivos)`;
+    document.getElementById('adminTitle').innerHTML = `<i class="fas fa-list-ul"></i> Planilla (${filteredDatabase.length} Efectivos)`;
     
-    body.innerHTML = dataToShow.map((i, index) => `
+    body.innerHTML = filteredDatabase.map((i, index) => `
         <tr id="row-${i.fireId}">
             <td>${index + 1}</td> 
             <td class="cap-text">${i.jerarquia}</td> 
             <td class="cap-text">${i.nombre}</td>
-            <td>${i.dni}</td>
-            <td>${i.ce}</td>
-            <td class="cap-text">${i.estadoCivil}</td>
-            <td>${i.fecha}</td>
-            <td>${i.emergencia}</td>
-            <td>${i.tel}</td>
-            <td>${i.telAlt1}</td>
-            <td>${i.email}</td>
-            <td class="cap-text">${i.calle}</td>
-            <td class="cap-text">${i.numero}</td>
-            <td class="cap-text">${i.localidad}</td>
-            <td class="cap-text">${i.provincia}</td>
-            <td class="cap-text">${i.destino || '-'}</td> 
+            <td>${i.dni}</td><td>${i.ce}</td>
+            <td class="cap-text">${i.estadoCivil}</td><td>${i.fecha}</td>
+            <td>${i.emergencia}</td><td>${i.tel}</td><td>${i.telAlt1}</td>
+            <td>${i.email}</td><td class="cap-text">${i.calle}</td>
+            <td class="cap-text">${i.numero}</td><td class="cap-text">${i.localidad}</td>
+            <td class="cap-text">${i.provincia}</td><td class="cap-text">${i.destino || '-'}</td> 
             <td class="actions-cell">
-                <button onclick="shareByWhatsApp('${i.fireId}')" class="btn-whatsapp" title="WhatsApp"><i class="fab fa-whatsapp"></i></button>
-                <button onclick="editInline('${i.fireId}')" title="Editar"><i class="fas fa-edit"></i></button>
-                <button onclick="deleteItem('${i.fireId}')" title="Eliminar"><i class="fas fa-trash"></i></button>
+                <button onclick="shareByWhatsApp('${i.fireId}')" class="btn-whatsapp"><i class="fab fa-whatsapp"></i></button>
+                <button onclick="editInline('${i.fireId}')"><i class="fas fa-edit"></i></button>
+                <button onclick="deleteItem('${i.fireId}')"><i class="fas fa-trash"></i></button>
             </td>
         </tr>`).join('');
 }
@@ -207,13 +155,19 @@ window.editInline = function(id) {
     const fields = ['jerarquia', 'nombre', 'dni', 'ce', 'estadoCivil', 'fecha', 'emergencia', 'tel', 'telAlt1', 'email', 'calle', 'numero', 'localidad', 'provincia', 'destino'];
     
     for (let i = 0; i < fields.length; i++) {
-        const val = cells[i+1].innerText === '-' ? '' : cells[i+1].innerText;
-        cells[i+1].innerHTML = `<input type="text" id="edit-${fields[i]}-${id}" value="${val}">`;
+        const fieldName = fields[i];
+        const currentVal = cells[i+1].innerText.trim() === '-' ? '' : cells[i+1].innerText.trim();
+        
+        if (fieldName === 'jerarquia' || fieldName === 'estadoCivil' || fieldName === 'destino') {
+            let optionsHtml = OPCIONES[fieldName].map(opt => `<option value="${opt}" ${opt.toLowerCase() === currentVal.toLowerCase() ? 'selected' : ''}>${opt}</option>`).join('');
+            cells[i+1].innerHTML = `<select id="edit-${fieldName}-${id}" style="width:100%; font-size:10px;">${optionsHtml}</select>`;
+        } else if (fieldName === 'fecha') {
+            cells[i+1].innerHTML = `<input type="date" id="edit-${fieldName}-${id}" value="${currentVal}" style="width:100%; font-size:10px;">`;
+        } else {
+            cells[i+1].innerHTML = `<input type="text" id="edit-${fieldName}-${id}" value="${currentVal}" style="width:100%; font-size:10px;">`;
+        }
     }
-    cells[16].innerHTML = `
-        <button onclick="saveInline('${id}')" class="btn-save-row"><i class="fas fa-check"></i></button>
-        <button onclick="renderTable()" class="btn-cancel-row"><i class="fas fa-times"></i></button>
-    `;
+    cells[16].innerHTML = `<button onclick="saveInline('${id}')" class="btn-save-row"><i class="fas fa-check"></i></button><button onclick="renderTable()" class="btn-cancel-row"><i class="fas fa-times"></i></button>`;
 };
 
 window.saveInline = async function(id) {
@@ -221,7 +175,7 @@ window.saveInline = async function(id) {
     const updated = {};
     fields.forEach(f => { 
         let val = document.getElementById(`edit-${f}-${id}`).value;
-        updated[f] = (f === 'dni' || f === 'ce' || f === 'tel' || f === 'fecha') ? val : val.toLowerCase();
+        updated[f] = (f === 'dni' || f === 'ce' || f === 'tel' || f === 'fecha' || f === 'jerarquia' || f === 'estadoCivil' || f === 'destino') ? val : val.toLowerCase();
     });
     try {
         await window.fstore.updateDoc(window.fstore.doc(window.db, "registros", id), updated);
@@ -231,81 +185,40 @@ window.saveInline = async function(id) {
     }
 };
 
-window.exportToPDF = function() {
+window.exportToPDF = async function() {
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'legal' });
-    
-    const ahora = new Date();
-    const fechaDescarga = ahora.toLocaleDateString('es-AR', { 
-        year: 'numeric', month: 'long', day: 'numeric', 
-        hour: '2-digit', minute: '2-digit' 
-    });
-
-    doc.setFontSize(16);
-    doc.text("PLAN DE LLAMADA - ESVIACATALINA", 14, 15);
-    doc.setFontSize(10);
-    doc.setTextColor(100);
-    doc.text(`Fecha de descarga: ${fechaDescarga}`, 14, 21);
-    doc.setTextColor(0);
-    
-    const sortedData = [...database].sort((a, b) => {
-        const pesoA = jerarquiaPrioridad[a.jerarquia] || 99;
-        const pesoB = jerarquiaPrioridad[b.jerarquia] || 99;
-        return pesoA === pesoB ? a.nombre.localeCompare(b.nombre) : pesoA - pesoB;
-    });
-
-    const columns = ["Nro", "Jerarquía", "Nombre", "DNI", "CE", "Est. Civil", "F. Nac", "Emergencia", "Tel.", "Alt 1", "Email", "Calle", "Nro", "Loc.", "Prov.", "Destino"];
-    const rows = sortedData.map((i, idx) => [
-        idx + 1, i.jerarquia, i.nombre, i.dni, i.ce, i.estadoCivil, i.fecha, i.emergencia, i.tel, i.telAlt1, i.email, i.calle, i.numero, i.localidad, i.provincia, i.destino || '-'
-    ]);
-
-    doc.autoTable({
-        head: [columns],
-        body: rows,
-        startY: 28,
-        styles: { fontSize: 6, halign: 'left' },
-        headStyles: { fillColor: [0, 51, 102] }
-    });
-    doc.save(`Planilla_Personal_${ahora.getTime()}.pdf`);
+    try {
+        const img = new Image(); img.src = 'logoEscuadron.jpeg';
+        await new Promise(r => img.onload = r);
+        const canvas = document.createElement("canvas"); canvas.width = img.width; canvas.height = img.height;
+        canvas.getContext("2d").drawImage(img, 0, 0);
+        doc.addImage(canvas.toDataURL("image/jpeg"), 'JPEG', 14, 8, 20, 20);
+        doc.setFontSize(18); doc.setTextColor(0, 51, 102); doc.text("GENDARMERÍA NACIONAL ARGENTINA", 38, 15);
+        doc.setFontSize(12); doc.text("PLAN DE LLAMADA - ESVIACATALINA", 38, 22);
+        doc.autoTable({
+            head: [["Nro", "Jerarquía", "Nombre", "DNI", "CE", "Est. Civil", "F. Nac", "Emergencia", "Tel.", "Alt 1", "Email", "Calle", "Nro", "Loc.", "Prov.", "Destino"]],
+            body: filteredDatabase.map((i, idx) => [idx+1, i.jerarquia, i.nombre.toUpperCase(), i.dni, i.ce, i.estadoCivil, i.fecha, i.emergencia, i.tel, i.telAlt1, i.email, i.calle, i.numero, i.localidad, i.provincia, i.destino || '-']),
+            startY: 35, styles: { fontSize: 6 }, headStyles: { fillColor: [0, 51, 102] }
+        });
+        doc.save(`Plan_Llamada_${Date.now()}.pdf`);
+    } catch (e) { Swal.fire('Error', 'No se pudo generar PDF.', 'error'); }
 };
 
 window.exportToExcel = function() {
-    const sortedData = [...database].sort((a, b) => {
-        const pesoA = jerarquiaPrioridad[a.jerarquia] || 99;
-        const pesoB = jerarquiaPrioridad[b.jerarquia] || 99;
-        return pesoA === pesoB ? a.nombre.localeCompare(b.nombre) : pesoA - pesoB;
-    });
-
-    const exportData = sortedData.map((i, idx) => ({
-        Nro: idx + 1,
-        Jerarquia: i.jerarquia,
-        Nombre: i.nombre,
-        DNI: i.dni,
-        CE: i.ce,
-        EstadoCivil: i.estadoCivil,
-        FechaNac: i.fecha,
-        Emergencia: i.emergencia,
-        Telefono: i.tel,
-        TelAlternativo: i.telAlt1,
-        Email: i.email,
-        Calle: i.calle,
-        Numero: i.numero,
-        Localidad: i.localidad,
-        Provincia: i.provincia,
-        Destino: i.destino || '-' 
-    }));
-    const ws = XLSX.utils.json_to_sheet(exportData);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Personal");
-    XLSX.writeFile(wb, "Planilla_Personal.xlsx");
+    const ws = XLSX.utils.json_to_sheet(filteredDatabase.map((i, idx) => ({"Nro": idx+1, "Jerarquía": i.jerarquia, "Nombre": i.nombre.toUpperCase(), "DNI": i.dni, "CE": i.ce, "Estado Civil": i.estadoCivil, "F. Nac": i.fecha, "Tel": i.tel, "Destino": i.destino || '-'})));
+    const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, "Personal");
+    XLSX.writeFile(wb, `Planilla_Filtrada.xlsx`);
 };
 
 window.deleteItem = async (id) => {
-    if ((await Swal.fire({ title: '¿Eliminar registro?', text: "Esta acción no se puede deshacer", icon: 'warning', showCancelButton: true, confirmButtonColor: '#dc3545' })).isConfirmed) {
-        await window.fstore.deleteDoc(window.fstore.doc(window.db, "registros", id));
-    }
+    if ((await Swal.fire({ title: '¿Eliminar?', icon: 'warning', showCancelButton: true })).isConfirmed) await window.fstore.deleteDoc(window.fstore.doc(window.db, "registros", id));
+};
+
+window.shareByWhatsApp = function(id) {
+    const i = database.find(item => item.fireId === id);
+    if (!i) return;
+    window.open(`https://wa.me/?text=*PLAN DE LLAMADA*%0A*Jerarquía:* ${i.jerarquia}%0A*Nombre:* ${i.nombre.toUpperCase()}%0A*DNI:* ${i.dni}`, '_blank');
 };
 
 document.getElementById('searchBar').oninput = (e) => renderTable(e.target.value);
-const fechaHoy = new Date().toISOString().split("T")[0];
-document.getElementById('fechaNacimiento').setAttribute('max', fechaHoy);
