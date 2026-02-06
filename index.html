@@ -186,17 +186,29 @@
     </main>
 
     <div id="adminModal" class="modal">
-        <div class="modal-content">
+        <div id="modalContent" class="modal-content">
             <span class="close" onclick="closeModal('adminModal')">&times;</span>
             <h2 id="adminTitle"><i class="fas fa-list-ul"></i> Planilla de Personal Registrado</h2>
-            <div class="admin-tools">
-                <input type="text" id="searchBar" placeholder="🔍 Buscar por Nombre o DNI...">
-                <div class="export-btns">
-                    <button onclick="exportToPDF()" class="btn btn-pdf"><i class="fas fa-file-pdf"></i> PDF Oficio</button>
-                    <button onclick="exportToExcel()" class="btn btn-excel"><i class="fas fa-file-excel"></i> Excel</button>
+            
+            <div class="admin-tools-container">
+                <div class="admin-tools">
+                    <input type="text" id="searchBar" placeholder="🔍 Buscar por Nombre o DNI...">
+                    <div class="export-btns">
+                        <button onclick="exportToPDF()" class="btn btn-pdf">
+                            <i class="fas fa-file-pdf"></i> <span class="btn-text">PDF Oficio</span>
+                        </button>
+                        <button onclick="exportToExcel()" class="btn btn-excel">
+                            <i class="fas fa-file-excel"></i> <span class="btn-text">Excel</span>
+                        </button>
+                    </div>
+                </div>
+                <div class="scroll-controls">
+                    <button onclick="scrollTable('left')" class="btn-scroll"><i class="fas fa-chevron-left"></i> Izquierda</button>
+                    <button onclick="scrollTable('right')" class="btn-scroll">Derecha <i class="fas fa-chevron-right"></i></button>
                 </div>
             </div>
-            <div class="table-responsive">
+
+            <div class="table-responsive" id="tableWrapper">
                 <table>
                 <thead>
                     <tr>
@@ -215,12 +227,14 @@
                         <th>Nro</th>
                         <th>Loc.</th>
                         <th>Prov.</th>
-                        <th>Destino</th> <th>Acciones</th>
+                        <th>Destino</th> 
+                        <th>Acciones</th>
                     </tr>
                 </thead>
                     <tbody id="tableBody"></tbody>
                 </table>
             </div>
+            <div id="modalBottom"></div>
         </div>
     </div>
     <script type="module">

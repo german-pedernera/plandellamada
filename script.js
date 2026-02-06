@@ -32,6 +32,16 @@ setTimeout(initApp, 1000);
 document.getElementById('hamburgerBtn').onclick = () => document.getElementById('dropdownMenu').classList.toggle('show');
 window.closeModal = (id) => document.getElementById(id).style.display = 'none';
 
+window.scrollTable = (dir) => {
+    const wrapper = document.getElementById('tableWrapper');
+    const scrollAmount = 350; 
+    if (dir === 'left') {
+        wrapper.scrollBy({ left: -scrollAmount, behavior: 'smooth' });
+    } else {
+        wrapper.scrollBy({ left: scrollAmount, behavior: 'smooth' });
+    }
+};
+
 document.getElementById('registrationForm').addEventListener('submit', async (e) => {
     e.preventDefault();
     const dni = document.getElementById('mi').value;
@@ -43,7 +53,7 @@ document.getElementById('registrationForm').addEventListener('submit', async (e)
 
     const reg = {
         jerarquia: document.getElementById('jerarquia').value,
-        nombre: document.getElementById('nombre').value.toLowerCase(), // Guardamos en minúsculas para estandarizar
+        nombre: document.getElementById('nombre').value.toLowerCase(),
         dni: dni,
         ce: ce,
         estadoCivil: document.getElementById('estadoCivil').value,
@@ -122,24 +132,53 @@ window.resetUserData = async () => {
     }
 };
 
+window.shareByWhatsApp = function(id) {
+    const i = database.find(item => item.fireId === id);
+    if (!i) return;
+
+    const mensaje = `*PLAN DE LLAMADA - ESVIACATALINA*%0A` +
+        `--------------------------------------------------------------%0A` +
+        `*Jerarquía:* ${i.jerarquia}%0A` +
+        `*Nombre:* ${i.nombre.toUpperCase()}%0A` +
+        `*DNI:* ${i.dni}%0A` +
+        `*CE:* ${i.ce}%0A` +
+        `*Est. Civil:* ${i.estadoCivil}%0A` +
+        `*F. Nacimiento:* ${i.fecha}%0A` +
+        `*Emergencia:* ${i.emergencia}%0A` +
+        `*Tel. Personal:* ${i.tel}%0A` +
+        `*Tel. Alt 1:* ${i.telAlt1}%0A` +
+        `*Email:* ${i.email}%0A` +
+        `*Domicilio:* ${i.calle} ${i.numero}%0A` +
+        `*Localidad:* ${i.localidad}, ${i.provincia}%0A` +
+        `*Destino:* ${i.destino || '-'}`;
+
+    window.open(`https://wa.me/?text=${mensaje}`, '_blank');
+};
+
 function renderTable(filter = "") {
     const body = document.getElementById('tableBody');
     const adminTitle = document.getElementById('adminTitle');
     
-    const filtered = database
-        .filter(i => i.nombre.toLowerCase().includes(filter.toLowerCase()) || i.dni.includes(filter))
-        .sort((a, b) => {
-            const pesoA = jerarquiaPrioridad[a.jerarquia] || 99;
-            const pesoB = jerarquiaPrioridad[b.jerarquia] || 99;
-            return pesoA - pesoB;
-        });
+    let dataToShow = database.filter(i => 
+        i.nombre.toLowerCase().includes(filter.toLowerCase()) || 
+        i.dni.includes(filter)
+    );
 
-    adminTitle.innerHTML = `<i class="fas fa-list-ul"></i> Planilla de Personal (${filtered.length} Efectivos)`;
+    dataToShow.sort((a, b) => {
+        const pesoA = jerarquiaPrioridad[a.jerarquia] || 99;
+        const pesoB = jerarquiaPrioridad[b.jerarquia] || 99;
+        if (pesoA === pesoB) {
+            return a.nombre.localeCompare(b.nombre);
+        }
+        return pesoA - pesoB;
+    });
+
+    adminTitle.innerHTML = `<i class="fas fa-list-ul"></i> Planilla de Personal (${dataToShow.length} Efectivos)`;
     
-    body.innerHTML = filtered.map((i, index) => `
+    body.innerHTML = dataToShow.map((i, index) => `
         <tr id="row-${i.fireId}">
             <td>${index + 1}</td> 
-            <td class="cap-text"><b>${i.jerarquia}</b></td>
+            <td class="cap-text">${i.jerarquia}</td> 
             <td class="cap-text">${i.nombre}</td>
             <td>${i.dni}</td>
             <td>${i.ce}</td>
@@ -155,6 +194,7 @@ function renderTable(filter = "") {
             <td class="cap-text">${i.provincia}</td>
             <td class="cap-text">${i.destino || '-'}</td> 
             <td class="actions-cell">
+                <button onclick="shareByWhatsApp('${i.fireId}')" class="btn-whatsapp" title="WhatsApp"><i class="fab fa-whatsapp"></i></button>
                 <button onclick="editInline('${i.fireId}')" title="Editar"><i class="fas fa-edit"></i></button>
                 <button onclick="deleteItem('${i.fireId}')" title="Eliminar"><i class="fas fa-trash"></i></button>
             </td>
@@ -194,29 +234,48 @@ window.saveInline = async function(id) {
 window.exportToPDF = function() {
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'legal' });
-    doc.text("PLAN DE LLAMADA - ESVIACATALINA", 14, 15);
-    const columns = ["Nro", "Jerarquía", "Nombre", "DNI", "CE", "Est. Civil", "F. Nac", "Emergencia", "Tel.", "Alt 1", "Email", "Calle", "Nro", "Loc.", "Prov.", "Destino"];
     
-    const sortedData = [...database].sort((a, b) => (jerarquiaPrioridad[a.jerarquia] || 99) - (jerarquiaPrioridad[b.jerarquia] || 99));
+    const ahora = new Date();
+    const fechaDescarga = ahora.toLocaleDateString('es-AR', { 
+        year: 'numeric', month: 'long', day: 'numeric', 
+        hour: '2-digit', minute: '2-digit' 
+    });
+
+    doc.setFontSize(16);
+    doc.text("PLAN DE LLAMADA - ESVIACATALINA", 14, 15);
+    doc.setFontSize(10);
+    doc.setTextColor(100);
+    doc.text(`Fecha de descarga: ${fechaDescarga}`, 14, 21);
+    doc.setTextColor(0);
+    
+    const sortedData = [...database].sort((a, b) => {
+        const pesoA = jerarquiaPrioridad[a.jerarquia] || 99;
+        const pesoB = jerarquiaPrioridad[b.jerarquia] || 99;
+        return pesoA === pesoB ? a.nombre.localeCompare(b.nombre) : pesoA - pesoB;
+    });
+
+    const columns = ["Nro", "Jerarquía", "Nombre", "DNI", "CE", "Est. Civil", "F. Nac", "Emergencia", "Tel.", "Alt 1", "Email", "Calle", "Nro", "Loc.", "Prov.", "Destino"];
     const rows = sortedData.map((i, idx) => [
-        idx + 1, 
-        i.jerarquia, 
-        i.nombre, 
-        i.dni, i.ce, i.estadoCivil, i.fecha, i.emergencia, i.tel, i.telAlt1, i.email, i.calle, i.numero, i.localidad, i.provincia, i.destino || '-'
+        idx + 1, i.jerarquia, i.nombre, i.dni, i.ce, i.estadoCivil, i.fecha, i.emergencia, i.tel, i.telAlt1, i.email, i.calle, i.numero, i.localidad, i.provincia, i.destino || '-'
     ]);
 
     doc.autoTable({
         head: [columns],
         body: rows,
-        startY: 25,
+        startY: 28,
         styles: { fontSize: 6, halign: 'left' },
         headStyles: { fillColor: [0, 51, 102] }
     });
-    doc.save('Planilla_Personal_Registrado.pdf');
+    doc.save(`Planilla_Personal_${ahora.getTime()}.pdf`);
 };
 
 window.exportToExcel = function() {
-    const sortedData = [...database].sort((a, b) => (jerarquiaPrioridad[a.jerarquia] || 99) - (jerarquiaPrioridad[b.jerarquia] || 99));
+    const sortedData = [...database].sort((a, b) => {
+        const pesoA = jerarquiaPrioridad[a.jerarquia] || 99;
+        const pesoB = jerarquiaPrioridad[b.jerarquia] || 99;
+        return pesoA === pesoB ? a.nombre.localeCompare(b.nombre) : pesoA - pesoB;
+    });
+
     const exportData = sortedData.map((i, idx) => ({
         Nro: idx + 1,
         Jerarquia: i.jerarquia,
