@@ -96,7 +96,8 @@
                         <label>Estado Civil</label>
                         <div class="input-with-icon">
                             <i class="fas fa-heart"></i>
-                            <select id="estadoCivil">
+                            <select id="estadoCivil" required>
+                                <option value="">Seleccione...</option>
                                 <option value="Soltero/a">Soltero/a</option>
                                 <option value="Casado/a">Casado/a</option>
                                 <option value="Divorciado/a">Divorciado/a</option>
@@ -106,11 +107,11 @@
                         </div>
                     </div>
                     <div class="input-group">
-                        <label>Destino (Opcional)</label>
+                        <label>Destino</label>
                         <div class="input-with-icon">
                             <i class="fas fa-map-pin"></i>
-                            <select id="destino">
-                                <option value="-">Seleccione destino...</option>
+                            <select id="destino" required>
+                                <option value="">Seleccione destino...</option>
                                 <option value="Esviacatalina">Esviacatalina</option>
                                 <option value="Seviapun">Seviapun</option>
                                 <option value="Nucleo">Nucleo</option>
@@ -134,7 +135,7 @@
                         <label>Tel. Alt. 1</label>
                         <div class="input-with-icon">
                             <i class="fas fa-phone-slash"></i>
-                            <input type="tel" id="telAlt1" placeholder="Número Alternativo">
+                            <input type="tel" id="telAlt1" placeholder="Número Alternativo" required>
                         </div>
                     </div>
                     <div class="input-group">

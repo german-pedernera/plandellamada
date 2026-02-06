@@ -18,7 +18,7 @@ const OPCIONES = {
         "Sargento", "Cabo Primero", "Cabo", "Gendarme"
     ],
     estadoCivil: ["Soltero/a", "Casado/a", "Divorciado/a", "Viudo/a", "Separacion de Hecho"],
-    destino: ["Esviacatalina", "Seviapun", "Nucleo", "-"]
+    destino: ["Esviacatalina", "Seviapun", "Nucleo"]
 };
 
 const jerarquiaPrioridad = {
@@ -33,6 +33,10 @@ let database = [];
 let filteredDatabase = [];
 
 function initApp() {
+    const today = new Date().toISOString().split('T')[0];
+    const inputFecha = document.getElementById('fechaNacimiento');
+    if (inputFecha) inputFecha.setAttribute('max', today);
+
     const q = window.fstore.query(window.fstore.collection(window.db, "registros"), window.fstore.orderBy("timestamp", "desc"));
     window.fstore.onSnapshot(q, (snapshot) => {
         database = snapshot.docs.map(doc => ({ fireId: doc.id, ...doc.data() }));
@@ -66,13 +70,74 @@ window.scrollTable = (dir) => {
     dir === 'left' ? wrapper.scrollBy({ left: -350, behavior: 'smooth' }) : wrapper.scrollBy({ left: 350, behavior: 'smooth' });
 };
 
+window.resetUserData = async function() {
+    document.getElementById('dropdownMenu').classList.remove('show');
+    
+    const { value: formValues } = await Swal.fire({
+        title: 'Borrar mi registro',
+        html:
+            '<input id="swal-dni" class="swal2-input" placeholder="Ingrese su MI (DNI)">' +
+            '<input id="swal-ce" type="password" class="swal2-input" placeholder="Ingrese su CE (Código)">',
+        focusConfirm: false,
+        showCancelButton: true,
+        confirmButtonText: 'Verificar y Borrar',
+        cancelButtonText: 'Cancelar',
+        preConfirm: () => {
+            return [
+                document.getElementById('swal-dni').value,
+                document.getElementById('swal-ce').value
+            ]
+        }
+    });
+
+    if (formValues) {
+        const [dniInput, ceInput] = formValues;
+        const registroEncontrado = database.find(r => r.dni === dniInput && r.ce === ceInput);
+
+        if (registroEncontrado) {
+            const confirmacion = await Swal.fire({
+                title: '¿Confirmar eliminación?',
+                text: `Se borrará el registro de: ${registroEncontrado.nombre.toUpperCase()}`,
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#dc3545',
+                confirmButtonText: 'Sí, borrar permanentemente'
+            });
+
+            if (confirmacion.isConfirmed) {
+                try {
+                    await window.fstore.deleteDoc(window.fstore.doc(window.db, "registros", registroEncontrado.fireId));
+                    Swal.fire('Éxito', 'Sus datos han sido eliminados de la planilla.', 'success');
+                } catch (error) {
+                    Swal.fire('Error', 'Fallo al intentar eliminar el registro.', 'error');
+                }
+            }
+        } else {
+            Swal.fire('Error de validación', 'Los datos ingresados no coinciden con ningún registro activo.', 'error');
+        }
+    }
+};
+
 document.getElementById('registrationForm').addEventListener('submit', async (e) => {
     e.preventDefault();
+    const camposIds = ['jerarquia', 'nombre', 'mi', 'ce', 'fechaNacimiento', 'estadoCivil', 'destino', 'telPers', 'telAlt1', 'emergenciaContacto', 'email', 'calle', 'numero', 'localidad', 'provincia'];
+    for (let id of camposIds) {
+        if (!document.getElementById(id).value.trim()) {
+            return Swal.fire('Campo Incompleto', 'Por favor complete todos los datos antes de continuar.', 'warning');
+        }
+    }
+
     const dni = document.getElementById('mi').value;
     const ce = document.getElementById('ce').value;
+    const fechaNac = document.getElementById('fechaNacimiento').value;
+    const today = new Date().toISOString().split('T')[0];
+
+    if (fechaNac > today) {
+        return Swal.fire('Error', 'La fecha de nacimiento no puede ser una fecha futura.', 'error');
+    }
 
     if (database.some(r => r.dni === dni || r.ce === ce)) {
-        return Swal.fire('Atención', 'Personal ya registrado.', 'warning');
+        return Swal.fire('Atención', 'Personal ya registrado con ese DNI o CE.', 'warning');
     }
 
     const reg = {
@@ -80,10 +145,10 @@ document.getElementById('registrationForm').addEventListener('submit', async (e)
         nombre: document.getElementById('nombre').value.toLowerCase(),
         dni: dni, ce: ce,
         estadoCivil: document.getElementById('estadoCivil').value,
-        fecha: document.getElementById('fechaNacimiento').value,
+        fecha: fechaNac,
         emergencia: document.getElementById('emergenciaContacto').value,
         tel: document.getElementById('telPers').value,
-        telAlt1: document.getElementById('telAlt1').value || '-',
+        telAlt1: document.getElementById('telAlt1').value,
         email: document.getElementById('email').value.toLowerCase(),
         calle: document.getElementById('calle').value.toLowerCase(),
         numero: document.getElementById('numero').value,
@@ -95,10 +160,10 @@ document.getElementById('registrationForm').addEventListener('submit', async (e)
 
     try {
         await window.fstore.addDoc(window.fstore.collection(window.db, "registros"), reg);
-        Swal.fire('Éxito', 'Registrado correctamente.', 'success');
+        Swal.fire('Éxito', 'Efectivo registrado correctamente.', 'success');
         e.target.reset();
     } catch (error) {
-        Swal.fire('Error', 'Fallo de conexión.', 'error');
+        Swal.fire('Error', 'Fallo al guardar en la base de datos.', 'error');
     }
 });
 
@@ -119,17 +184,9 @@ document.getElementById('adminLoginBtn').onclick = async () => {
 function renderTable(filter = "") {
     const body = document.getElementById('tableBody');
     const f = filter.toLowerCase();
-    
-    filteredDatabase = database.filter(i => 
-        i.nombre.toLowerCase().includes(f) || i.dni.includes(f) ||
-        i.ce.toLowerCase().includes(f) || i.estadoCivil.toLowerCase().includes(f) ||
-        i.jerarquia.toLowerCase().includes(f)
-    );
-
+    filteredDatabase = database.filter(i => i.nombre.toLowerCase().includes(f) || i.dni.includes(f) || i.ce.toLowerCase().includes(f) || i.estadoCivil.toLowerCase().includes(f) || i.jerarquia.toLowerCase().includes(f));
     filteredDatabase.sort((a, b) => (jerarquiaPrioridad[a.jerarquia] || 99) - (jerarquiaPrioridad[b.jerarquia] || 99) || a.nombre.localeCompare(b.nombre));
-
     document.getElementById('adminTitle').innerHTML = `<i class="fas fa-list-ul"></i> Planilla (${filteredDatabase.length} Efectivos)`;
-    
     body.innerHTML = filteredDatabase.map((i, index) => `
         <tr id="row-${i.fireId}">
             <td>${index + 1}</td> 
@@ -153,11 +210,9 @@ window.editInline = function(id) {
     const row = document.getElementById(`row-${id}`);
     const cells = row.getElementsByTagName('td');
     const fields = ['jerarquia', 'nombre', 'dni', 'ce', 'estadoCivil', 'fecha', 'emergencia', 'tel', 'telAlt1', 'email', 'calle', 'numero', 'localidad', 'provincia', 'destino'];
-    
     for (let i = 0; i < fields.length; i++) {
         const fieldName = fields[i];
         const currentVal = cells[i+1].innerText.trim() === '-' ? '' : cells[i+1].innerText.trim();
-        
         if (fieldName === 'jerarquia' || fieldName === 'estadoCivil' || fieldName === 'destino') {
             let optionsHtml = OPCIONES[fieldName].map(opt => `<option value="${opt}" ${opt.toLowerCase() === currentVal.toLowerCase() ? 'selected' : ''}>${opt}</option>`).join('');
             cells[i+1].innerHTML = `<select id="edit-${fieldName}-${id}" style="width:100%; font-size:10px;">${optionsHtml}</select>`;
@@ -188,14 +243,26 @@ window.saveInline = async function(id) {
 window.exportToPDF = async function() {
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'legal' });
+    
+    // Obtener fecha y hora actual de la descarga
+    const ahora = new Date();
+    const fechaDescarga = ahora.toLocaleDateString('es-AR');
+    const horaDescarga = ahora.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' });
+
     try {
         const img = new Image(); img.src = 'logoEscuadron.jpeg';
         await new Promise(r => img.onload = r);
         const canvas = document.createElement("canvas"); canvas.width = img.width; canvas.height = img.height;
         canvas.getContext("2d").drawImage(img, 0, 0);
+        
         doc.addImage(canvas.toDataURL("image/jpeg"), 'JPEG', 14, 8, 20, 20);
         doc.setFontSize(18); doc.setTextColor(0, 51, 102); doc.text("GENDARMERÍA NACIONAL ARGENTINA", 38, 15);
         doc.setFontSize(12); doc.text("PLAN DE LLAMADA - ESVIACATALINA", 38, 22);
+        
+        // Agregar Fecha y Hora de descarga debajo del título secundario
+        doc.setFontSize(8); doc.setTextColor(100);
+        doc.text(`Fecha de descarga: ${fechaDescarga} - ${horaDescarga} hs`, 38, 27);
+
         doc.autoTable({
             head: [["Nro", "Jerarquía", "Nombre", "DNI", "CE", "Est. Civil", "F. Nac", "Emergencia", "Tel.", "Alt 1", "Email", "Calle", "Nro", "Loc.", "Prov.", "Destino"]],
             body: filteredDatabase.map((i, idx) => [idx+1, i.jerarquia, i.nombre.toUpperCase(), i.dni, i.ce, i.estadoCivil, i.fecha, i.emergencia, i.tel, i.telAlt1, i.email, i.calle, i.numero, i.localidad, i.provincia, i.destino || '-']),
@@ -218,7 +285,8 @@ window.deleteItem = async (id) => {
 window.shareByWhatsApp = function(id) {
     const i = database.find(item => item.fireId === id);
     if (!i) return;
-    window.open(`https://wa.me/?text=*PLAN DE LLAMADA*%0A*Jerarquía:* ${i.jerarquia}%0A*Nombre:* ${i.nombre.toUpperCase()}%0A*DNI:* ${i.dni}`, '_blank');
+    let mensaje = `*FICHA DE PERSONAL - PLAN DE LLAMADA*%0A-----------------------------------%0A*Jerarquía:* ${i.jerarquia}%0A*Nombre:* ${i.nombre.toUpperCase()}%0A*DNI:* ${i.dni}%0A*CE:* ${i.ce}%0A*Estado Civil:* ${i.estadoCivil}%0A*F. Nacimiento:* ${i.fecha}%0A*Destino:* ${i.destino || '-'}%0A-----------------------------------%0A*CONTACTO Y DOMICILIO*%0A*Teléfono:* ${i.tel}%0A*Tel. Alt:* ${i.telAlt1}%0A*Emergencia:* ${i.emergencia}%0A*Email:* ${i.email}%0A*Calle:* ${i.calle.toUpperCase()}%0A*Nro/Mza/Casa:* ${i.numero}%0A*Localidad:* ${i.localidad.toUpperCase()}%0A*Provincia:* ${i.provincia.toUpperCase()}`;
+    window.open(`https://wa.me/?text=${mensaje}`, '_blank');
 };
 
 document.getElementById('searchBar').oninput = (e) => renderTable(e.target.value);
