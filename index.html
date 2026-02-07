@@ -203,6 +203,14 @@
                         </button>
                     </div>
                 </div>
+                <div class="admin-actions">
+                    <button onclick="addNewPersonnelRow()" class="btn btn-add">
+                        <i class="fas fa-user-plus"></i> Agregar Nuevo Efectivo
+                    </button>
+                    <button onclick="saveAllChanges()" class="btn btn-save-all">
+                        <i class="fas fa-check-double"></i> Guardar Cambios en Planilla
+                    </button>
+                </div>
                 <div class="scroll-controls">
                     <button onclick="scrollTable('left')" class="btn-scroll"><i class="fas fa-chevron-left"></i> Izquierda</button>
                     <button onclick="scrollTable('right')" class="btn-scroll">Derecha <i class="fas fa-chevron-right"></i></button>
@@ -237,6 +245,7 @@
             </div>
         </div>
     </div>
+
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
         import { getFirestore, collection, addDoc, deleteDoc, doc, onSnapshot, query, orderBy, updateDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
